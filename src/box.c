@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "box/box.h"
+
+static int savedStdout = -1;
+static int pipefd[2];
+
+static char buf[4096];
+static size_t captureLen = 0;
+
+static void captureBegin(void)
+{
+	pipe(pipefd);
+
+	savedStdout = dup(STDOUT_FILENO);
+
+	dup2(pipefd[1], STDOUT_FILENO);
+
+	close(pipefd[1]);
+}
+
+static void captureEnd(void)
+{
+	fflush(stdout);
+
+	dup2(savedStdout, STDOUT_FILENO);
+	close(savedStdout);
+	savedStdout = -1;
+
+	captureLen = read(pipefd[0], buf, sizeof(buf) - 1);
+	close(pipefd[0]);
+
+	if (captureLen < 0) {
+		captureLen = 0;
+	}
+	buf[captureLen] = '\0';
+}
+
+static void preprocess(void)
+{
+	size_t i, j;
+
+	static char tmp[4096];
+	size_t out = 0;
+
+	for (i = 0; buf[i] != '\0' && out + 1 < sizeof(tmp); i++) {
+		if (buf[i] == '\t') {
+			for (j = 0; j < 8 && out + 1 < sizeof(tmp); j++) {
+				tmp[out++] = ' ';
+			}
+		} else {
+			tmp[out++] = buf[i];
+		}
+	}
+
+	tmp[out] = '\0';
+	strcpy(buf, tmp);
+}
+
+static void drawBox(void)
+{
+	size_t i;
+
+	char *p = buf;
+	size_t width = 0;
+
+	while (*p != '\0') {
+		char *start = p;
+		size_t len;
+
+		while (*p != '\0' && *p != '\n') p++;
+		len = p - start;
+
+		if (len > width) width = len;
+		if (*p == '\n') p++;
+	}
+
+	printf("┌");
+	for (i = 0; i < width + 2; i++) printf("─");
+	printf("┐\n");
+
+	p = buf;
+	while (*p != '\0') {
+		size_t i;
+
+		char *start = p;
+		size_t len;
+
+		while (*p != '\0' && *p != '\n') p++;
+		len = p - start;
+
+		printf("│ ");
+		fwrite(start, 1, len, stdout);
+
+		for (i = len; i < width; i++) printf(" ");
+
+		printf(" │\n");
+
+		if (*p == '\n') p++;
+	}
+
+	printf("└");
+	for (i = 0; i < width + 2; i++) printf("─");
+	printf("┘\n");
+}
+
+void box_begin(void)
+{
+	captureBegin();
+}
+
+void box_end(void)
+{
+	captureEnd();
+
+	preprocess();
+	drawBox();
+}
