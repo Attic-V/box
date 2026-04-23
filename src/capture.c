@@ -8,7 +8,7 @@ static int savedStdout = -1;
 static int pipefd[2];
 
 static char buf[4096];
-static size_t captureLen = 0;
+static ssize_t captureLen = 0;
 
 void capture_begin(void)
 {
@@ -33,9 +33,11 @@ char *capture_end(void)
 	close(pipefd[0]);
 
 	if (captureLen < 0) {
-		captureLen = 0;
+		perror("read");
+		buf[0] = '\0';
+		return strdup(buf);
 	}
-	buf[captureLen] = '\0';
 
+	buf[captureLen] = '\0';
 	return strdup(buf);
 }
