@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "box/box.h"
+#include "box/capture.h"
 
 struct style {
 	char *edge_horizontal;
@@ -18,43 +19,7 @@ static struct style style_single = {
 	"┐", "┌", "┘", "└",
 };
 
-static int savedStdout = -1;
-static int pipefd[2];
-
-static char buf[4096];
-static size_t captureLen = 0;
-
-static void captureBegin(void)
-{
-	fflush(stdout);
-
-	pipe(pipefd);
-
-	savedStdout = dup(STDOUT_FILENO);
-
-	dup2(pipefd[1], STDOUT_FILENO);
-
-	close(pipefd[1]);
-}
-
-static void captureEnd(void)
-{
-	fflush(stdout);
-
-	dup2(savedStdout, STDOUT_FILENO);
-	close(savedStdout);
-	savedStdout = -1;
-
-	captureLen = read(pipefd[0], buf, sizeof(buf) - 1);
-	close(pipefd[0]);
-
-	if (captureLen < 0) {
-		captureLen = 0;
-	}
-	buf[captureLen] = '\0';
-}
-
-static void preprocess(void)
+static void preprocess(char *buf)
 {
 	size_t i, j;
 
@@ -75,7 +40,7 @@ static void preprocess(void)
 	strcpy(buf, tmp);
 }
 
-static void drawBox(void)
+static void drawBox(char *buf)
 {
 	size_t i;
 
@@ -129,13 +94,13 @@ static void drawBox(void)
 
 void box_begin(void)
 {
-	captureBegin();
+	capture_begin();
 }
 
 void box_end(void)
 {
-	captureEnd();
+	char *buf = capture_end();
 
-	preprocess();
-	drawBox();
+	preprocess(buf);
+	drawBox(buf);
 }
