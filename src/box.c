@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "box/box.h"
@@ -102,4 +103,6 @@ void box_end(void)
 
 	preprocess(buf);
 	drawBox(buf);
+
+	free(buf);
 }

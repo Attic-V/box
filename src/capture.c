@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include "box/capture.h"
+#include "box/posix.h"
 
 static int savedStdout = -1;
 static int pipefd[2];
@@ -35,5 +36,6 @@ char *capture_end(void)
 		captureLen = 0;
 	}
 	buf[captureLen] = '\0';
-	return buf;
+
+	return strdup(buf);
 }
