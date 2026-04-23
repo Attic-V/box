@@ -26,6 +26,8 @@ static size_t captureLen = 0;
 
 static void captureBegin(void)
 {
+	fflush(stdout);
+
 	pipe(pipefd);
 
 	savedStdout = dup(STDOUT_FILENO);
