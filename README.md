@@ -7,7 +7,7 @@
 Simply call `box_begin()` and `box_end()`, and everything in between is
 automatically framed.
 
-## Example
+## Examples
 
 ```
 #include <stdio.h>
@@ -37,6 +37,53 @@ output:
 │ line breaks │
 │ work too!   │
 └─────────────┘
+```
+
+*box* also supports nesting:
+
+```
+#include <stdio.h>
+
+#include "box/box.h"
+
+int main(void)
+{
+        box_begin();
+        puts("1");
+
+        box_begin();
+        puts("2");
+
+        box_begin();
+        puts("3");
+        box_end();
+
+        box_end();
+
+        box_begin();
+        puts("4");
+        box_end();
+
+        box_end();
+
+        return 0;
+}
+```
+
+output:
+```
+┌───────────┐
+│ 1         │
+│ ┌───────┐ │
+│ │ 2     │ │
+│ │ ┌───┐ │ │
+│ │ │ 3 │ │ │
+│ │ └───┘ │ │
+│ └───────┘ │
+│ ┌───┐     │
+│ │ 4 │     │
+│ └───┘     │
+└───────────┘
 ```
 
 ## Using with Meson

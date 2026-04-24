@@ -1,43 +1,72 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "box/capture.h"
 #include "box/posix.h"
 
-static int savedStdout = -1;
-static int pipefd[2];
+#define BUF_SIZE 4096
 
-static char buf[4096];
-static ssize_t captureLen = 0;
+struct frame {
+	int stdout_prev;
+	int pipefd[2];
+
+	struct frame *prev;
+};
+
+static struct frame *frame = NULL;
+
+void pushFrame(void)
+{
+	struct frame *f = malloc(sizeof(*f));
+
+	f->prev = frame;
+	frame = f;
+}
+
+void popFrame(void)
+{
+	struct frame *f = frame;
+
+	frame = f->prev;
+	free(f);
+}
 
 void capture_begin(void)
 {
 	fflush(stdout);
 
-	pipe(pipefd);
+	pushFrame();
 
-	savedStdout = dup(STDOUT_FILENO);
-	dup2(pipefd[1], STDOUT_FILENO);
+	pipe(frame->pipefd);
 
-	close(pipefd[1]);
+	frame->stdout_prev = dup(STDOUT_FILENO);
+	dup2(frame->pipefd[1], STDOUT_FILENO);
+
+	close(frame->pipefd[1]);
 }
 
 char *capture_end(void)
 {
+	char *buf = malloc(BUF_SIZE);
+	ssize_t captureLen;
+
 	fflush(stdout);
 
-	dup2(savedStdout, STDOUT_FILENO);
-	close(savedStdout);
+	dup2(frame->stdout_prev, STDOUT_FILENO);
+	close(frame->stdout_prev);
 
-	captureLen = read(pipefd[0], buf, sizeof(buf) - 1);
-	close(pipefd[0]);
+	captureLen = read(frame->pipefd[0], buf, BUF_SIZE - 1);
+	close(frame->pipefd[0]);
 
 	if (captureLen < 0) {
 		perror("read");
-		buf[0] = '\0';
-		return strdup(buf);
+		free(buf);
+		popFrame();
+		return strdup("");
 	}
 
 	buf[captureLen] = '\0';
-	return strdup(buf);
+	popFrame();
+	return buf;
 }

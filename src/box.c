@@ -1,9 +1,12 @@
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "box/box.h"
 #include "box/capture.h"
+#include "box/posix.h"
 
 struct style {
 	char *edge_horizontal;
@@ -23,7 +26,7 @@ static void preprocess(char *buf)
 {
 	size_t i, j;
 
-	static char tmp[4096];
+	char tmp[4096];
 	size_t out = 0;
 
 	for (i = 0; buf[i] != '\0' && out + 1 < sizeof(tmp); i++) {
@@ -40,6 +43,23 @@ static void preprocess(char *buf)
 	strcpy(buf, tmp);
 }
 
+static size_t utf8_width(char *s, size_t bytes)
+{
+	mbstate_t st = {0};
+	size_t width = 0;
+	size_t i = 0;
+	wchar_t wc;
+
+	while (i < bytes) {
+		size_t n = mbrtowc(&wc, s + i, bytes - i, &st);
+
+		width += wcwidth(wc);
+		i += n;
+	}
+
+	return width;
+}
+
 static void drawBox(char *buf)
 {
 	size_t i;
@@ -49,12 +69,13 @@ static void drawBox(char *buf)
 
 	while (*p != '\0') {
 		char *start = p;
-		size_t len;
+		size_t len, w;
 
 		while (*p != '\0' && *p != '\n') p++;
 		len = p - start;
+		w = utf8_width(start, len);
 
-		if (len > width) width = len;
+		if (w > width) width = w;
 		if (*p == '\n') p++;
 	}
 
@@ -68,16 +89,17 @@ static void drawBox(char *buf)
 		size_t i;
 
 		char *start = p;
-		size_t len;
+		size_t len, w;
 
 		while (*p != '\0' && *p != '\n') p++;
 		len = p - start;
+		w = utf8_width(start, len);
 
 		printf(style_single.edge_vertical);
 		printf(" ");
 		fwrite(start, 1, len, stdout);
 
-		for (i = len; i < width; i++) printf(" ");
+		for (i = w; i < width; i++) printf(" ");
 
 		printf(" ");
 		printf(style_single.edge_vertical);
@@ -94,6 +116,7 @@ static void drawBox(char *buf)
 
 void box_begin(void)
 {
+	setlocale(LC_ALL, "");
 	capture_begin();
 }
 
