@@ -44,7 +44,7 @@ output:
 ```
 #include <stdio.h>
 
-#include "box/box.h"
+#include <box/box.h>
 
 int main(void)
 {
