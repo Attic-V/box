@@ -88,7 +88,7 @@ output:
 
 ## Using with Meson
 
-### As a subprojecct (recommended)
+### As a subproject (recommended)
 
 Add a `subprojects/box.wrap` file to your project:
 
